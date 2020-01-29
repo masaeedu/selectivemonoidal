@@ -18,7 +18,6 @@ While it may appear that these "decisive" functors are a new abstraction, they a
 
 ### Substituting `Selective`
 The short version of the story is that if we define the following class:
-
 ```haskell
 class Functor f => Decide f
   where
@@ -45,14 +44,9 @@ branch :: Selective f => f (Either a b) -> f (a -> c) -> f (b -> c) -> f c
 
 Given that `select` can be defined in terms of `branch`, all the other combinators follow (see `Main.hs`).
 
-## Why are you reinventing all these abstractions?
-I consider this repo to be part of a program of demonstrating that many abstractions we are interested in for practical Haskell programming (applicatives, alternatives, filterables, alignables, selectives, monad transformers, ???), can be modeled quite nicely as a single concept: monoidal functors between various monoidal categories.
+## What is a lax monoidal functor?
 
-I hope this will increase awareness of monoidal categories and monoidal functors as useful concepts among Haskell programmers, so that people working on different problems can "see" a monoidal functor when it's there, similarly to how the now ubiquitous abstraction of a monad is easily "seen" in problem domains by Haskell programmers.
-
-## Ok, but what is a monoidal functor
-
-A generalized lax monoidal functor can be modeled by by this pseudo-Haskell:
+A lax monoidal functor between arbitrary categories can be modeled by by this pseudo-Haskell:
 
 ```haskell
 class (Category (→₁), Category (→₂)) => Functor (→₁) (→₂) f
@@ -95,4 +89,4 @@ type Applicative = MonoidalFunctor (->) (,) () (->) (,) ()
 type Decisive = MonoidalFunctor (Op (->)) Either Void (Op (->)) Either Void
 ```
 
-But explaining what's going on here probably requires an post to itself (TODO)
+How to conveniently represent these in actual Haskell is still an unsolved question, and it a gradual explanation of what monoidal categories and functors are conceptually is still missing. (TODO)
