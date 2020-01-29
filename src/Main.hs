@@ -6,6 +6,7 @@ import Data.Void (Void)
 import Data.Bool (bool)
 import Control.Applicative (liftA2)
 import Data.Functor.Const (Const(..))
+import Data.Function ((&))
 
 -- Patterns
 
@@ -26,11 +27,15 @@ class Decide f => Decisive f
 -- Selective doesn't really need to be a class anymore
 type Selective f = (Applicative f, Decide f)
 
+-- Convenience function for <*> with the wrapped function as the second effect
+(</>) :: Applicative f => f a -> f (a -> b) -> f b
+(</>) = liftA2 (&)
+
 branch :: Selective f => f (Either a b) -> f (a -> c) -> f (b -> c) -> f c
 branch = choose . decide
   where
-  choose (Left fa)  l _ = liftA2 (flip ($)) fa l
-  choose (Right fb) _ r = liftA2 (flip ($)) fb r
+  choose (Left fa)  l _ = fa </> l
+  choose (Right fb) _ r = fb </> r
 
 -- Selective combinators
 -- Note that based on this implementation a "skip" happens when the @f (Either a b)@ argument happens to be a @Right b@
