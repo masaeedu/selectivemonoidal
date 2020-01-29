@@ -3,7 +3,14 @@
 ## Overview
 Selective functors are a new abstraction first outlined by Andrey Mokhov [here](https://blogs.ncl.ac.uk/andreymokhov/selective/) and later fleshed out in a paper [here](https://www.staff.ncl.ac.uk/andrey.mokhov/selective-functors.pdf).
 
-The code in this repository (see `Main.hs`) attempts to demonstrate that the proposition "functor `F` is selective" can be teased apart into the propositions "`F` is applicative" "`F` is decisive".
+The code in this repository (see `Main.hs`) attempts to demonstrate that the proposition
+
+> The functor `F` is a selective functor
+
+can be teased apart into two separate propositions:
+
+> 1. `F` is an applicative functor
+> 2. `F` is a decisive functor
 
 While it may appear that these "decisive" functors are a new abstraction, they are actually arise from the same phenomenon as applicative functors: they are both particular kinds of lax monoidal functors. So for example Conor McBride (who after all introduced us to the familiar `Applicative` family of lax monoidal functors) offhandedly invented `Decisive` functors in [this blogpost](https://fplab.bitbucket.io/posts/2007-07-08-decisive-functors.html) from 2007.
 
