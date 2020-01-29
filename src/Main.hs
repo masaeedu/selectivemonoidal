@@ -21,7 +21,8 @@ class Decide f => Decisive f
   where
   guarantee :: f Void -> Void
 
--- Basically a decisive functor is just an applicative functor in "backwards Haskell". So e.g. just as @Applicative@ is a superclass of @Monad@, @Decisive@ is a superclass of @Comonad@.
+-- Basically a decisive functor is just an applicative functor in "backwards Haskell"
+-- Just as @Applicative@ is a superclass of @Monad@, @Decisive@ is a superclass of @Comonad@
 -- See https://fplab.bitbucket.io/posts/2007-07-08-decisive-functors.html
 
 -- Selective doesn't really need to be a class anymore
