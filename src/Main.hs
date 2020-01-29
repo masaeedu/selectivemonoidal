@@ -53,8 +53,30 @@ whenS x y = bool (Right ()) (Left ()) <$> x <*? (const <$> y)
 ifS :: Selective f => f Bool -> f a -> f a -> f a
 ifS x t e = branch (bool (Right ()) (Left ()) <$> x) (const <$> t) (const <$> e)
 
--- Examples
+-- Deriving @select@ from @branch@ is fine, but deriving @branch@ from @select@ seems to destroy a valuable property
 
+-- The paper uses @select@ as the primitive operation, which for the most part works the same as how our definitions
+-- work. However, wherever the results use @ifS@, which is derived from @branch@, the behavior differs from what you
+-- will observe by running Main.
+
+-- To recover the behavior from the paper, we can reuse its derivation of @branch@ from @select@ to "break" things in
+-- exactly the same way.
+
+branch' :: Selective f => f (Either a b) -> f (a -> c) -> f (b -> c) -> f c
+branch' x l r = fmap (fmap Left) x <*? fmap (fmap Right) l <*? r
+
+-- Now, we can define an @ifS'@ derived from @branch'@.
+
+ifS' :: Selective f => f Bool -> f a -> f a -> f a
+ifS' x t e = branch' (bool (Right ()) (Left ()) <$> x) (const <$> t) (const <$> e)
+
+-- If we now use @ifS'@ instead of @ifS@ in all the examples below, we get exactly the same results as the paper.
+
+-- However, I believe the results produced by @ifS@ are "more correct". In particular, @ifS@ actually behaves like
+-- @if _ then _ else _ syntax@, in that only one of the two options is chosen. @ifS'@ imitates in a loose fashion
+-- the behavior of @select@ itself, so that @ifS' (pure True) x y@ might end up being @x *> y@
+
+-- Examples
 newtype Over m a = Over { getOver :: m }
   deriving (Show)
   deriving (Functor, Applicative) via (Const m)
