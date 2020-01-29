@@ -51,4 +51,48 @@ I consider this repo to be part of a program of demonstrating that many abstract
 I hope this will increase awareness of monoidal categories and monoidal functors as useful concepts among Haskell programmers, so that people working on different problems can "see" a monoidal functor when it's there, similarly to how the now ubiquitous abstraction of a monad is easily "seen" in problem domains by Haskell programmers.
 
 ## Ok, but what is a monoidal functor
-TODO: Write a blog post to explain
+
+A generalized lax monoidal functor can be modeled by by this pseudo-Haskell:
+
+```haskell
+class (Category (→₁), Category (→₂)) => Functor (→₁) (→₂) f
+  where
+  map :: (a →₁ b) -> (f a →₂ f b)
+
+data Iso (→) a b = Iso { fwd :: a → b, bwd :: b → a }
+
+-- Not going to get into the horrorshow of trying to define Bifunctor using product
+-- categories in Haskell, please indulge me while I pull Bifunctor out of thin air
+
+class (Category (→), Bifunctor (→) (⊗)) => SemigroupalCategory (→) (⊗)
+  where
+  assoc :: Iso (→) (a ⊗ (b ⊗ c)) ((a ⊗ b) ⊗ c)
+
+class (SemigroupalCategory (→) (⊗)) => MonoidalCategory (→) (⊗) i
+  where
+  lunit :: Iso (→) (i ⊗ a) a
+  runit :: Iso (→) (a ⊗ i) a
+
+class
+  (SemigroupalCategory (→₁) (⊗₁), SemigroupalCategory (→₂) (⊗₂), Functor (→₁) (→₂) f)
+  =>
+  SemigroupalFunctor (→₁) (⊗₁) (→₂) (⊗₂) f
+  where
+  zip :: f a ⊗₂ f b →₂ f (a ⊗₁ b)
+
+class
+  (MonoidalCategory (→₁) (⊗₁) (i₁), MonoidalCategory (→₂) (⊗₂) (i₂), SemigroupalFunctor (→₁) (→₂) f)
+  =>
+  MonoidalFunctor (→₁) (⊗₁) (i₁) (→₂) (⊗₂) (i₂) f
+  where
+  pure :: i₂ →₂ f i₁
+```
+
+So that then:
+
+```haskell
+type Applicative = MonoidalFunctor (->) (,) () (->) (,) ()
+type Decisive = MonoidalFunctor (Op (->)) Either Void (Op (->)) Either Void
+```
+
+But explaining what's going on here probably requires an post to itself (TODO)
