@@ -9,19 +9,21 @@ import Data.Functor.Const (Const(..))
 
 -- Patterns
 
--- Oplax monoidal functor from Hask^op under Either to Hask^op under Either
--- Basically just applicatives in the opposite category. Superclass of comonads.
+-- A decisive functor is an oplax monoidal functor from Hask under Either to Hask under Either
+-- Equivalently, it's the opposite of a lax monoidal functor from Hask^op under Either to Hask^op under Either
+
 class Functor f => Decide f
   where
   decide :: f (Either a b) -> Either (f a) (f b)
 
--- Split up into two classes, similar to Apply, Applicative, Alt, Alternative, Filterish, Filterable, etc.
--- Just generally useful to split up monoidal functors into two levels
 class Decide f => Decisive f
   where
   guarantee :: f Void -> Void
 
--- We're just going to declare a single trivial instance for this class
+-- Basically a decisive functor is just an applicative functor in "backwards Haskell". So e.g. just as @Applicative@ is a superclass of @Monad@, @Decisive@ is a superclass of @Comonad@.
+-- See https://fplab.bitbucket.io/posts/2007-07-08-decisive-functors.html
+
+-- Selective doesn't really need to be a class anymore
 type Selective f = (Applicative f, Decide f)
 
 branch :: Selective f => f (Either a b) -> f (a -> c) -> f (b -> c) -> f c
