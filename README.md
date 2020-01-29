@@ -12,7 +12,7 @@ can be teased apart into two separate propositions:
 > 1. `F` is an applicative functor
 > 2. `F` is a decisive functor
 
-While it may appear that these "decisive" functors are a new abstraction, they are actually arise from the same phenomenon as applicative functors: they are both particular kinds of lax monoidal functors. So for example Conor McBride (who after all introduced us to the familiar `Applicative` family of lax monoidal functors) offhandedly invented `Decisive` functors in [this blogpost](https://fplab.bitbucket.io/posts/2007-07-08-decisive-functors.html) from 2007.
+While it may appear that these "decisive" functors are a new abstraction, they actually arise from the same phenomenon as applicative functors: they are both particular kinds of lax monoidal functors. Conor McBride (who after all introduced us to the familiar `Applicative` family of lax monoidal functors) offhandedly invented `Decisive` functors in [this blogpost](https://fplab.bitbucket.io/posts/2007-07-08-decisive-functors.html) from 2007.
 
 ## Explanation
 
