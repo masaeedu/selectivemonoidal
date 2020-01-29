@@ -21,14 +21,6 @@ class Decide f => Decisive f
   where
   guarantee :: f Void -> Void
 
--- Note btw that just as we can obtain an efficient "Day convolved" representation of the @Applicative@ lax monoidal functor,
--- so too can we obtain an more efficient "Day convolved" representation for the @Decisive@ lax monoidal functor
--- @@@
--- class Functor f => Decide' f
---   where
---   decide' :: (c -> Either a b) -> f a -> f b -> f c
--- @@@
-
 -- Basically a decisive functor is just an applicative functor in "backwards Haskell". So e.g. just as @Applicative@ is a superclass of @Monad@, @Decisive@ is a superclass of @Comonad@.
 -- See https://fplab.bitbucket.io/posts/2007-07-08-decisive-functors.html
 
