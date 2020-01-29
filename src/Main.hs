@@ -64,8 +64,7 @@ ifS x t e = branch (bool (Right ()) (Left ()) <$> x) (const <$> t) (const <$> e)
 -- Deriving @select@ from @branch@ is fine, but deriving @branch@ from @select@ seems to destroy a valuable property
 
 -- The paper uses @select@ as the primitive operation, which for the most part works the same as how our definitions
--- work. However, wherever the results use @ifS@, which is derived from @branch@, the behavior differs from what you
--- will observe by running Main.
+-- work. However, wherever the results use @ifS@, which is derived from @branch@, the behavior differs from the paper.
 
 -- To recover the behavior from the paper, we can reuse its derivation of @branch@ from @select@ to "break" things in
 -- exactly the same way.
