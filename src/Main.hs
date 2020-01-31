@@ -6,15 +6,14 @@ import Data.Functor.Const (Const(..))
 
 import Decisive (Decide(..))
 import Applicative (Apply(..), Applicative(..), liftA2, (<*>), (*>))
-import Selective (Select(..), Static(..), ifS, whenS)
+import Selective (Select(..), Static(..), branchVia, ifS, whenS)
 
 -- {{{ EXAMPLES
 
 -- {{{ OVER
 
 newtype Over m a = Over { getOver :: m }
-  deriving Show
-  deriving (Functor, Apply, Applicative) via Const m
+  deriving Show deriving (Functor, Apply, Applicative) via Const m
 
 instance Decide (Over m)
   where
@@ -22,7 +21,7 @@ instance Decide (Over m)
 
 instance Monoid m => Select (Over m)
   where
-  branch b x y = getStatic $ branch (Static b) (Static x) (Static y)
+  branch = branchVia Static
 
 testOver :: IO ()
 testOver = do
@@ -44,7 +43,7 @@ instance Decide (Under m)
 
 instance Monoid m => Select (Under m)
   where
-  branch b x y = getStatic $ branch (Static b) (Static x) (Static y)
+  branch = branchVia Static
 
 testUnder :: IO ()
 testUnder = do
@@ -78,7 +77,7 @@ instance Semigroup e => Decide (Validation e)
 
 instance Semigroup e => Select (Validation e)
   where
-  branch b x y = getStatic $ branch (Static b) (Static x) (Static y)
+  branch = branchVia Static
 
 type Radius = Int
 type Width = Int

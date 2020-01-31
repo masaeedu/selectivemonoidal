@@ -7,12 +7,16 @@ import Data.Bool (bool)
 import Applicative (Apply(..), Applicative(..), pure, (<*>))
 import Decisive (Decide(..))
 
+import Data.Coerce (Coercible, coerce)
+
 -- Represents a context with choice (whether static or dynamic)
 class Functor f => Select f
   where
   branch :: f (Either a b) -> f (a -> c) -> f (b -> c) -> f c
 
 type Selective f = (Select f, Applicative f)
+
+-- {{{ COMBINATORS
 
 -- If we support static parallelism (including doing nothing), and support some form of choice
 -- (static or dynamic), we can choose between applying a transformation and doing nothing
@@ -28,9 +32,18 @@ infixl 4 <*?
 ifS :: Select f => f Bool -> f a -> f a -> f a
 ifS x t e = branch (bool (Right ()) (Left ()) <$> x) (const <$> t) (const <$> e)
 
--- This requires both the ability to chooes
+-- This requires both the ability to choose and the ability to perform both actions
 whenS :: Selective f => f Bool -> f () -> f ()
 whenS x y = bool (Right ()) (Left ()) <$> x <*? (const <$> y)
+
+branchVia :: (Select (t f), forall x. Coercible (t f x) (f x)) =>
+  (forall x. f x -> t f x) ->
+  f (Either a b) -> f (a -> c) -> f (b -> c) -> f c
+branchVia c b x y = coerce $ branch (c b) (c x) (c y)
+
+-- }}}
+
+-- {{{ STATIC SELECT
 
 -- Contexts that support both static choice and static parallelism can be used for branching computations.
 -- These computations support static analysis.
@@ -44,6 +57,10 @@ instance (Decide f, Apply f) => Select (Static f)
     continue (Left  fa) fac _   = flip ($) <$> fa <*> fac
     continue (Right fb) _   fbc = flip ($) <$> fb <*> fbc
 
+-- }}}
+
+-- {{{ DYNAMIC SELECT
+
 -- Contexts that only support dynamic choice can also be used for branching computations.
 -- However, these computations don't support static analysis.
 newtype Dynamic f a = Dynamic { getDynamic :: f a }
@@ -53,12 +70,23 @@ instance Monad f => Select (Dynamic f)
   where
   branch fab fac fbc = fab >>= either (\a -> fmap ($ a) fac) (\b -> fmap ($ b) fbc)
 
+instance Select IO
+  where
+  branch = branchVia Dynamic
+
+-- }}}
+
+-- {{{ NOT REALLY SELECT
+
 -- Contexts that only support static parallelism can't branch at all, so the only way they
 -- could implement `select` would be by performing all three computations and discarding the
--- result of one. IMO this should not be a lawful implementation of `Select`
+-- result of one.
 newtype Force f a = Force { getForce :: f a }
   deriving (Functor, Apply)
 
+-- IMO this should not be a lawful implementation of `Select`
 instance Apply f => Select (Force f)
   where
   branch fab fac fbc = either <$> fac <*> fbc <*> fab
+
+-- }}}
