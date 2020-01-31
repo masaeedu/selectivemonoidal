@@ -15,6 +15,9 @@ default-extensions:
 - GADTs
 
 - StandaloneDeriving
+- DeriveFunctor
+- DerivingVia
+- GeneralizedNewtypeDeriving
 
 - ScopedTypeVariables
 - RankNTypes
@@ -29,6 +32,7 @@ default-extensions:
 - PolyKinds
 - KindSignatures
 
+- UndecidableInstances
 - FlexibleInstances
 - FlexibleContexts
 

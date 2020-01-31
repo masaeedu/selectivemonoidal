@@ -1,4 +1,4 @@
-{-# LANGUAGE RankNTypes, UndecidableInstances, DeriveFunctor, DerivingVia, GeneralizedNewtypeDeriving, NoImplicitPrelude, RoleAnnotations #-}
+{-# LANGUAGE NoImplicitPrelude #-}
 
 module Main where
 
