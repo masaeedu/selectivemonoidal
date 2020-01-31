@@ -89,4 +89,4 @@ type Applicative = MonoidalFunctor (->) (,) () (->) (,) ()
 type Decisive = MonoidalFunctor (Op (->)) Either Void (Op (->)) Either Void
 ```
 
-How to conveniently represent these in actual Haskell is still an unsolved question, and it a gradual explanation of what monoidal categories and functors are conceptually is still missing. (TODO)
+TODO: Explain (op)lax monoidal functors
