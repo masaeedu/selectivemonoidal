@@ -1,130 +1,12 @@
-{-# LANGUAGE NoImplicitPrelude #-}
-
 module Main where
 
 import Prelude hiding (Applicative(..), zip)
-import qualified Prelude as P (Applicative(..))
-import Data.Void (Void)
-import Data.Bool (bool)
+
 import Data.Functor.Const (Const(..))
 
--- {{{ CLASSES
-
--- {{{ DECISIVE
-
--- Represents a context with static choice
-class Functor f => Decide f
-  where
-  decide :: f (Either a b) -> Either (f a) (f b)
-
--- Choosing among no options
-class Decide f => Decisive f
-  where
-  force :: f Void -> Void
-
--- }}}
-
--- {{{ APPLICATIVE
-
--- Represents a context with static parallelism
-class Functor f => Apply f
-  where
-  zip :: (f a, f b) -> f (a, b)
-
--- Doing all of no tasks
-class Apply f => Applicative f
-  where
-  husk :: () -> f ()
-
-(<*>) :: Apply f => f (a -> b) -> f a -> f b
-(<*>) fab fa = fmap (uncurry ($)) $ zip (fab, fa)
-
-infixl 4 <*>
-
-(*>) :: Apply f => f a -> f b -> f b
-(*>) fa fb = flip const <$> fa <*> fb
-
-liftA2 :: Apply f => (a -> b -> c) -> f a -> f b -> f c
-liftA2 abc fa fb = abc <$> fa <*> fb
-
-pure :: Applicative f => a -> f a
-pure a = a <$ husk ()
-
-instance Semigroup m => Apply (Const m)
-  where
-  zip (Const x, Const y) = Const (x <> y)
-
-instance Monoid m => Applicative (Const m)
-  where
-  husk _ = Const mempty
-
--- }}}
-
--- {{{ SELECTIVE
-
--- Represents a context with choice (whether static or dynamic)
-class Functor f => Select f
-  where
-  branch :: f (Either a b) -> f (a -> c) -> f (b -> c) -> f c
-
-type Selective f = (Select f, Applicative f)
-
--- Notice how we can't implement `branch` in terms of only `Apply`!
--- A notion of choice demands more than `Apply` in one way or another...
-
--- If we support static parallelism (including doing nothing), and support some form of choice
--- (static or dynamic), we can choose between applying a transformation and doing nothing
-select :: Selective f => f (Either a b) -> f (a -> b) -> f b
-select b d = branch b d (pure id)
-
-(<*?) :: Selective f => f (Either a b) -> f (a -> b) -> f b
-(<*?) = select
-
-infixl 4 <*?
-
--- This can be written in terms of only the ability to choose
-ifS :: Select f => f Bool -> f a -> f a -> f a
-ifS x t e = branch (bool (Right ()) (Left ()) <$> x) (const <$> t) (const <$> e)
-
--- This requires both the ability to chooes
-whenS :: Selective f => f Bool -> f () -> f ()
-whenS x y = bool (Right ()) (Left ()) <$> x <*? (const <$> y)
-
--- }}}
-
--- Contexts that support both static choice and static parallelism can be used for branching computations.
--- These computations support static analysis.
-newtype Static f a = Static { getStatic :: f a }
-  deriving (Functor, Decide, Apply)
-
-instance (Decide f, Apply f) => Select (Static f)
-  where
-  branch b x y = Static $ continue (decide $ getStatic b) (getStatic x) (getStatic y)
-    where
-    continue (Left  fa) fac _   = flip ($) <$> fa <*> fac
-    continue (Right fb) _   fbc = flip ($) <$> fb <*> fbc
-
--- Contexts that only support dynamic choice can also be used for branching computations.
--- However, these computations don't support static analysis.
-newtype Dynamic f a = Dynamic { getDynamic :: f a }
-  deriving (Functor, P.Applicative, Monad)
-
-instance Monad f => Select (Dynamic f)
-  where
-  branch fab fac fbc = fab >>= either (\a -> fmap ($ a) fac) (\b -> fmap ($ b) fbc)
-
--- Contexts that only support static parallelism can't branch at all, so the only way they
--- could implement `select` would be by performing all three computations and discarding the
--- result of one. IMO this should not be a lawful implementation of `Select`
-newtype Force f a = Force { getForce :: f a }
-  deriving (Functor, Apply)
-
-instance Apply f => Select (Force f)
-  where
-  branch fab fac fbc = either <$> fac <*> fbc <*> fab
-
--- }}}
-
+import Decisive (Decide(..))
+import Applicative (Apply(..), Applicative(..), liftA2, (<*>), (*>))
+import Selective (Select(..), Static(..), ifS, whenS)
 
 -- {{{ EXAMPLES
 
@@ -138,7 +20,7 @@ instance Decide (Over m)
   where
   decide (Over m) = Left (Over m)
 
-instance Semigroup m => Select (Over m)
+instance Monoid m => Select (Over m)
   where
   branch b x y = getStatic $ branch (Static b) (Static x) (Static y)
 
@@ -160,7 +42,7 @@ instance Decide (Under m)
   where
   decide (Under m) = Right (Under m)
 
-instance Semigroup m => Select (Under m)
+instance Monoid m => Select (Under m)
   where
   branch b x y = getStatic $ branch (Static b) (Static x) (Static y)
 

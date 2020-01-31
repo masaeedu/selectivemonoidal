@@ -35,6 +35,7 @@ default-extensions:
 - UndecidableInstances
 - FlexibleInstances
 - FlexibleContexts
+- DefaultSignatures
 
 library: {}
 executable:
