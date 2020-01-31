@@ -1,89 +1,146 @@
-{-# LANGUAGE RankNTypes, UndecidableInstances, DeriveFunctor, DerivingVia #-}
+{-# LANGUAGE RankNTypes, UndecidableInstances, DeriveFunctor, DerivingVia, GeneralizedNewtypeDeriving, NoImplicitPrelude, RoleAnnotations #-}
 
 module Main where
 
+import Prelude hiding (Applicative(..), zip)
+import qualified Prelude as P (Applicative(..))
 import Data.Void (Void)
 import Data.Bool (bool)
-import Control.Applicative (liftA2)
 import Data.Functor.Const (Const(..))
-import Data.Function ((&))
 
--- Patterns
+-- {{{ CLASSES
 
--- A decisive functor is an oplax monoidal functor from Hask under Either to Hask under Either
--- Equivalently, it's the opposite of a lax monoidal functor from Hask^op under Either to Hask^op under Either
+-- {{{ DECISIVE
 
+-- Represents a context with static choice
 class Functor f => Decide f
   where
   decide :: f (Either a b) -> Either (f a) (f b)
 
+-- Choosing among no options
 class Decide f => Decisive f
   where
-  guarantee :: f Void -> Void
+  force :: f Void -> Void
 
--- Basically a decisive functor is just an applicative functor in "backwards Haskell"
--- Just as @Applicative@ is a superclass of @Monad@, @Decisive@ is a superclass of @Comonad@
--- See https://fplab.bitbucket.io/posts/2007-07-08-decisive-functors.html
+-- }}}
 
--- Selective doesn't really need to be a class anymore
-type Selective f = (Applicative f, Decide f)
+-- {{{ APPLICATIVE
 
--- Convenience function for <*> with the wrapped function as the second effect
-(</>) :: Applicative f => f a -> f (a -> b) -> f b
-(</>) = liftA2 (&)
-
-branch :: Selective f => f (Either a b) -> f (a -> c) -> f (b -> c) -> f c
-branch = choose . decide
+-- Represents a context with static parallelism
+class Functor f => Apply f
   where
-  choose (Left fa)  l _ = fa </> l
-  choose (Right fb) _ r = fb </> r
+  zip :: (f a, f b) -> f (a, b)
 
--- Selective combinators
--- Note that based on this implementation a "skip" happens when the @f (Either a b)@ argument happens to be a @Right b@
+-- Doing all of no tasks
+class Apply f => Applicative f
+  where
+  husk :: () -> f ()
+
+(<*>) :: Apply f => f (a -> b) -> f a -> f b
+(<*>) fab fa = fmap (uncurry ($)) $ zip (fab, fa)
+
+infixl 4 <*>
+
+(*>) :: Apply f => f a -> f b -> f b
+(*>) fa fb = flip const <$> fa <*> fb
+
+liftA2 :: Apply f => (a -> b -> c) -> f a -> f b -> f c
+liftA2 abc fa fb = abc <$> fa <*> fb
+
+pure :: Applicative f => a -> f a
+pure a = a <$ husk ()
+
+instance Semigroup m => Apply (Const m)
+  where
+  zip (Const x, Const y) = Const (x <> y)
+
+instance Monoid m => Applicative (Const m)
+  where
+  husk _ = Const mempty
+
+-- }}}
+
+-- {{{ SELECTIVE
+
+-- Represents a context with choice (whether static or dynamic)
+class Functor f => Select f
+  where
+  branch :: f (Either a b) -> f (a -> c) -> f (b -> c) -> f c
+
+type Selective f = (Select f, Applicative f)
+
+-- Notice how we can't implement `branch` in terms of only `Apply`!
+-- A notion of choice demands more than `Apply` in one way or another...
+
+-- If we support static parallelism (including doing nothing), and support some form of choice
+-- (static or dynamic), we can choose between applying a transformation and doing nothing
 select :: Selective f => f (Either a b) -> f (a -> b) -> f b
-select feab fab = branch feab fab (pure id)
+select b d = branch b d (pure id)
 
 (<*?) :: Selective f => f (Either a b) -> f (a -> b) -> f b
 (<*?) = select
 
 infixl 4 <*?
 
+-- This can be written in terms of only the ability to choose
+ifS :: Select f => f Bool -> f a -> f a -> f a
+ifS x t e = branch (bool (Right ()) (Left ()) <$> x) (const <$> t) (const <$> e)
+
+-- This requires both the ability to chooes
 whenS :: Selective f => f Bool -> f () -> f ()
 whenS x y = bool (Right ()) (Left ()) <$> x <*? (const <$> y)
 
-ifS :: Selective f => f Bool -> f a -> f a -> f a
-ifS x t e = branch (bool (Right ()) (Left ()) <$> x) (const <$> t) (const <$> e)
+-- }}}
 
--- Deriving @select@ from @branch@ is fine, but deriving @branch@ from @select@ seems to destroy a valuable property
+-- Contexts that support both static choice and static parallelism can be used for branching computations.
+-- These computations support static analysis.
+newtype Static f a = Static { getStatic :: f a }
+  deriving (Functor, Decide, Apply)
 
--- The paper uses @select@ as the primitive operation, which for the most part works the same as how our definitions
--- work. However, wherever the results use @ifS@, which is derived from @branch@, the behavior differs from the paper.
+instance (Decide f, Apply f) => Select (Static f)
+  where
+  branch b x y = Static $ continue (decide $ getStatic b) (getStatic x) (getStatic y)
+    where
+    continue (Left  fa) fac _   = flip ($) <$> fa <*> fac
+    continue (Right fb) _   fbc = flip ($) <$> fb <*> fbc
 
--- To recover the behavior from the paper, we can reuse its derivation of @branch@ from @select@ to "break" things in
--- exactly the same way.
+-- Contexts that only support dynamic choice can also be used for branching computations.
+-- However, these computations don't support static analysis.
+newtype Dynamic f a = Dynamic { getDynamic :: f a }
+  deriving (Functor, P.Applicative, Monad)
 
-branch' :: Selective f => f (Either a b) -> f (a -> c) -> f (b -> c) -> f c
-branch' x l r = fmap (fmap Left) x <*? fmap (fmap Right) l <*? r
+instance Monad f => Select (Dynamic f)
+  where
+  branch fab fac fbc = fab >>= either (\a -> fmap ($ a) fac) (\b -> fmap ($ b) fbc)
 
--- Now, we can define an @ifS'@ derived from @branch'@.
+-- Contexts that only support static parallelism can't branch at all, so the only way they
+-- could implement `select` would be by performing all three computations and discarding the
+-- result of one. IMO this should not be a lawful implementation of `Select`
+newtype Force f a = Force { getForce :: f a }
+  deriving (Functor, Apply)
 
-ifS' :: Selective f => f Bool -> f a -> f a -> f a
-ifS' x t e = branch' (bool (Right ()) (Left ()) <$> x) (const <$> t) (const <$> e)
+instance Apply f => Select (Force f)
+  where
+  branch fab fac fbc = either <$> fac <*> fbc <*> fab
 
--- If we now use @ifS'@ instead of @ifS@ in all the examples below, we get exactly the same results as the paper.
+-- }}}
 
--- However, I believe the results produced by @ifS@ are "more correct". In particular, @ifS@ actually behaves like
--- @if _ then _ else _ syntax@, in that only one of the two options is chosen. @ifS'@ imitates in a loose fashion
--- the behavior of @select@ itself, so that @ifS' (pure True) x y@ might end up being @x *> y@
 
--- Examples
+-- {{{ EXAMPLES
+
+-- {{{ OVER
+
 newtype Over m a = Over { getOver :: m }
-  deriving (Show)
-  deriving (Functor, Applicative) via (Const m)
+  deriving Show
+  deriving (Functor, Apply, Applicative) via Const m
 
 instance Decide (Over m)
   where
   decide (Over m) = Left (Over m)
+
+instance Semigroup m => Select (Over m)
+  where
+  branch b x y = getStatic $ branch (Static b) (Static x) (Static y)
 
 testOver :: IO ()
 testOver = do
@@ -91,9 +148,21 @@ testOver = do
   -- example from paper
   print $ ifS (Over "a") (Over "b") (Over "c") *> Over "d" *> whenS (Over "e") (Over "f")
 
+-- }}}
+
+-- {{{ UNDER
+
+newtype Under m a = Under { getUnder :: m }
+  deriving Show
+  deriving (Functor, Apply, Applicative) via Const m
+
 instance Decide (Under m)
   where
   decide (Under m) = Right (Under m)
+
+instance Semigroup m => Select (Under m)
+  where
+  branch b x y = getStatic $ branch (Static b) (Static x) (Static y)
 
 testUnder :: IO ()
 testUnder = do
@@ -101,26 +170,33 @@ testUnder = do
   -- example from paper
   print $ ifS (Under "a") (Under "b") (Under "c") *> Under "d" *> whenS (Under "e") (Under "f")
 
-newtype Under m a = Under { getUnder :: m }
-  deriving (Show)
-  deriving (Functor, Applicative) via Const m
+-- }}}
+
+-- {{{ VALIDATION
 
 data Validation e a = Failure e | Success a
   deriving (Show, Functor)
 
+instance Semigroup e => Apply (Validation e)
+  where
+  zip (Failure e, Failure f) = Failure (e <> f)
+  zip (Failure e, Success _) = Failure e
+  zip (Success _, Failure f) = Failure f
+  zip (Success a, Success b ) = Success (a, b)
+
 instance Semigroup e => Applicative (Validation e)
   where
-  pure = Success
-  Failure e1 <*> Failure e2 = Failure (e1 <> e2)
-  Failure e1 <*> Success _  = Failure e1
-  Success _  <*> Failure e2 = Failure e2
-  Success f  <*> Success a  = Success (f a)
+  husk _ = Success ()
 
 instance Semigroup e => Decide (Validation e)
   where
   decide (Failure e) = Right (Failure e)
   decide (Success (Left a)) = Left (Success a)
   decide (Success (Right b)) = Right (Success b)
+
+instance Semigroup e => Select (Validation e)
+  where
+  branch b x y = getStatic $ branch (Static b) (Static x) (Static y)
 
 type Radius = Int
 type Width = Int
@@ -145,7 +221,7 @@ testValidation = do
   print $ twoShapes s1 s2
 
   where
-  shape :: Selective f => f Bool -> f Radius -> f Width -> f Height -> f Shape
+  shape :: (Apply f, Select f) => f Bool -> f Radius -> f Width -> f Height -> f Shape
   shape x r w h = ifS x (Circle <$> r) (Rectangle <$> w <*> h)
 
   twoShapes :: Applicative f => f Shape -> f Shape -> f (Shape, Shape)
@@ -160,6 +236,10 @@ testUnderVsValidation = do
   print $ Under "a" *> whenS (Under "b") (Under "c")
   print $ Failure "a" *> whenS (Success True) (Failure "b")
   print $ whenS (Failure "a" *> Success True) (Failure "b")
+
+-- }}}
+
+-- }}}
 
 main :: IO ()
 main = do
