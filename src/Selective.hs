@@ -2,7 +2,6 @@
 module Selective where
 
 import Prelude hiding (Applicative(..))
-import qualified Prelude as P (Applicative(..))
 
 import Data.Bool (bool)
 import Data.Function ((&))
@@ -84,7 +83,7 @@ instance (Decide f, Alt f, Apply f) => Apply (Static f a)
 -- Contexts that only support dynamic choice can also be used for branching computations.
 -- However, these computations don't support static analysis.
 newtype Dynamic f a = Dynamic { getDynamic :: f a }
-  deriving (Functor, Apply, Applicative, P.Applicative, Monad)
+  deriving Functor
 
 instance Monad f => Apply (Fork (Dynamic f) a)
   where
