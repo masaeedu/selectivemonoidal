@@ -72,9 +72,9 @@ instance (Decide f, Alt f, Apply f) => Apply (Static f a)
   where
   zip (Static (Fork fa), Static (Fork fb)) = Static $ Fork $ go (decide fa) (decide fb)
     where
-    go (Left x) (Left y) = Left <$> x <|> y
-    go (Left x) (Right _) = Left <$> x
-    go (Right _) (Left x) = Left <$> x
+    go (Left  x) (Left  y) = Left <$> x <|> y
+    go (Left  x) (Right _) = Left <$> x
+    go (Right _) (Left  x) = Left <$> x
     go (Right x) (Right y) = fmap Right $ (,) <$> x <*> y
 
 -- }}}
