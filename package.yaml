@@ -8,34 +8,35 @@ build-type: Simple
 
 source-dirs: src
 dependencies:
-- { name: "base", version: '>=4.12 && <4.13' }
+  - { name: "base", version: ">=4.12 && <4.13" }
+  - bifunctors
 
 ghc-options: -Wall
 default-extensions:
-- GADTs
+  - GADTs
 
-- StandaloneDeriving
-- DeriveFunctor
-- DerivingVia
-- GeneralizedNewtypeDeriving
+  - StandaloneDeriving
+  - DeriveFunctor
+  - DerivingVia
+  - GeneralizedNewtypeDeriving
 
-- ScopedTypeVariables
-- RankNTypes
-- QuantifiedConstraints
+  - ScopedTypeVariables
+  - RankNTypes
+  - QuantifiedConstraints
 
-- TypeApplications
-- TypeOperators
-- MultiParamTypeClasses
+  - TypeApplications
+  - TypeOperators
+  - MultiParamTypeClasses
 
-- ConstraintKinds
-- DataKinds
-- PolyKinds
-- KindSignatures
+  - ConstraintKinds
+  - DataKinds
+  - PolyKinds
+  - KindSignatures
 
-- UndecidableInstances
-- FlexibleInstances
-- FlexibleContexts
-- DefaultSignatures
+  - UndecidableInstances
+  - FlexibleInstances
+  - FlexibleContexts
+  - DefaultSignatures
 
 library: {}
 executable:
