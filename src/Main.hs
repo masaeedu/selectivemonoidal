@@ -7,7 +7,7 @@ import Data.Functor.Const (Const(..))
 import Decisive (Decide(..))
 import Applicative (Apply(..), Applicative(..), liftA2, (<*>), (*>))
 import Alternative (Alt(..))
-import Selective (Select, Static(..), Fork(..), ifS, whenS)
+import Selective (Select, Static(..), Outside(..), ifS, whenS)
 
 -- {{{ EXAMPLES
 
@@ -25,7 +25,7 @@ instance Alt (Over m)
   where
   union (fa, _) = Left <$> fa
 
-deriving via (Static (Over a) b) instance Monoid a => Apply (Fork (Over a) b)
+deriving via (Static (Over a) b) instance Monoid a => Apply (Outside (Over a) b)
 
 testOver :: IO ()
 testOver = do
@@ -49,7 +49,7 @@ instance Decide (Under m)
   where
   decide (Under m) = Left (Under m)
 
-deriving via (Static (Under m) a) instance Monoid m => Apply (Fork (Under m) a)
+deriving via (Static (Under m) a) instance Monoid m => Apply (Outside (Under m) a)
 
 testUnder :: IO ()
 testUnder = do
@@ -85,7 +85,7 @@ instance Semigroup e => Decide (Validation e)
   decide (Success (Left a))  = Left (Success a)
   decide (Success (Right b)) = Right (Success b)
 
-deriving via (Static (Validation e) a) instance Semigroup e => Apply (Fork (Validation e) a)
+deriving via (Static (Validation e) a) instance Semigroup e => Apply (Outside (Validation e) a)
 
 type Radius = Int
 type Width = Int
