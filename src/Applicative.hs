@@ -38,5 +38,8 @@ pure a = a <$ husk ()
 instance Apply IO
 instance Applicative IO
 
+instance Apply (Either a)
+instance Applicative (Either a)
+
 instance Monoid m => Apply (Const m)
 instance Monoid m => Applicative (Const m)

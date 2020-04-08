@@ -6,22 +6,26 @@ import Data.Functor.Const (Const(..))
 
 import Decisive (Decide(..))
 import Applicative (Apply(..), Applicative(..), liftA2, (<*>), (*>))
-import Selective (Select(..), Static(..), branchVia, ifS, whenS)
+import Alternative (Alt(..))
+import Selective (Select, Static(..), Fork(..), ifS, whenS)
 
 -- {{{ EXAMPLES
 
 -- {{{ OVER
 
 newtype Over m a = Over { getOver :: m }
-  deriving Show deriving (Functor, Apply, Applicative) via Const m
+  deriving Show
+  deriving (Functor, Apply, Applicative) via Const m
 
 instance Decide (Over m)
   where
-  decide (Over m) = Left (Over m)
+  decide (Over m) = Right (Over m)
 
-instance Monoid m => Select (Over m)
+instance Alt (Over m)
   where
-  branch = branchVia Static
+  union (fa, _) = Left <$> fa
+
+deriving via (Static (Over a) b) instance Monoid a => Apply (Fork (Over a) b)
 
 testOver :: IO ()
 testOver = do
@@ -37,13 +41,15 @@ newtype Under m a = Under { getUnder :: m }
   deriving Show
   deriving (Functor, Apply, Applicative) via Const m
 
+instance Alt (Under m)
+  where
+  union (fa, _) = Left <$> fa
+
 instance Decide (Under m)
   where
-  decide (Under m) = Right (Under m)
+  decide (Under m) = Left (Under m)
 
-instance Monoid m => Select (Under m)
-  where
-  branch = branchVia Static
+deriving via (Static (Under m) a) instance Monoid m => Apply (Fork (Under m) a)
 
 testUnder :: IO ()
 testUnder = do
@@ -65,19 +71,21 @@ instance Semigroup e => Apply (Validation e)
   zip (Success _, Failure f) = Failure f
   zip (Success a, Success b ) = Success (a, b)
 
+instance Alt (Validation e)
+  where
+  union (fa, _) = Left <$> fa
+
 instance Semigroup e => Applicative (Validation e)
   where
   husk _ = Success ()
 
 instance Semigroup e => Decide (Validation e)
   where
-  decide (Failure e) = Right (Failure e)
-  decide (Success (Left a)) = Left (Success a)
+  decide (Failure e)         = Left (Failure e)
+  decide (Success (Left a))  = Left (Success a)
   decide (Success (Right b)) = Right (Success b)
 
-instance Semigroup e => Select (Validation e)
-  where
-  branch = branchVia Static
+deriving via (Static (Validation e) a) instance Semigroup e => Apply (Fork (Validation e) a)
 
 type Radius = Int
 type Width = Int
